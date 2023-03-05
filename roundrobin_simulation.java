@@ -61,29 +61,25 @@ public class Main {
     }
     
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        
-        // read input from user
-        System.out.print("Enter number of processes: ");
-        int numProcesses = scanner.nextInt();
-        System.out.print("Enter time quantum: ");
-        int quantum = scanner.nextInt();
-        System.out.println("Enter the timw limit: ");
-        int timelimit = scanner.nextInt();
-        
+             
+        Random random = new Random();
+        System.out.print("Enter the number of processes: ");
+        Scanner sc = new Scanner(System.in);
+        int numProcesses = sc.nextInt();
         List<Process> processes = new ArrayList<>();
-        for (int i = 1; i <= numProcesses; i++) {
-            System.out.print("Enter arrival time and burst time for process " + i + ": ");
-            int arrivalTime = scanner.nextInt();
-            int burstTime = scanner.nextInt();
+        for (int i = 0; i < numProcesses; i++) {
+            int arrivalTime = random.nextInt(100);
+            int burstTime = random.nextInt(numProcesses) + 1;
             processes.add(new Process(i, arrivalTime, burstTime));
         }
-        
+        System.out.print("Enter the time quantum: ");
+         int quantum = sc.nextInt();
         Scheduler scheduler = new Scheduler(quantum);
         for (Process p : processes) {
             scheduler.addProcess(p);
         }
         scheduler.roundRobin();
+        
         
         // Print results
         double totalWaitingTime = 0.0;
