@@ -1,126 +1,154 @@
 import java.util.*;
 
+class Process {
+    int pid;
+    int arrivalTime;
+    int burstTime;
+    int remainingTime;
+    int completionTime;
+    int turnaroundTime;
+    int waitingTime;
+
+    Process(int pid, int arrivalTime, int burstTime) {
+        this.pid = pid;
+        this.arrivalTime = arrivalTime;
+        this.burstTime = burstTime;
+        this.remainingTime = burstTime;
+    }
+}
+
 public class Main {
 
-    // Define the Process class
-    static class Process {
-        int processID;
-        int arrivalTime;
-        int burstTime;
-        int waitingTime;
-        int turnaroundTime;
-        int remainingTime;
-        int startTime;
-
-        Process(int id, int arrival, int burst) {
-            processID = id;
-            arrivalTime = arrival;
-            burstTime = burst;
-            waitingTime = 0;
-            turnaroundTime = 0;
-            remainingTime = burst;
-            startTime = -1;
-        }
-
-        void start(int time) {
-            startTime = time;
-        }
-
-        void complete(int time) {
-            int tempWaitingTime = turnaroundTime - burstTime;
-            turnaroundTime = waitingTime + burstTime;
-            waitingTime = startTime - arrivalTime;
-            waitingTime = tempWaitingTime >= 0 ? tempWaitingTime : 0;
-        }
-    }
-
-    static class Scheduler {
-        int timelimit;
-        int quantum;
-        Queue<Process> queue;
-
-        Scheduler(int q, int t) {
-            quantum = q;
-            timelimit = t;
-            queue = new LinkedList<>();
-        }
-
-        void addProcess(Process p) {
-            queue.add(p);
-        }
-
-        Process removeProcess() {
-            return queue.remove();
-        }
-
-        boolean isEmpty() {
-            return queue.isEmpty();
-        }
-
-        void roundRobin() {
-            int currentTime = 0;
-            List<Process> unfinishedProcesses = new ArrayList<>();
-            while (!isEmpty() && currentTime < timelimit) {
-                Process p = removeProcess();
-                int timeSlice = Math.min(quantum, p.remainingTime);
-                p.remainingTime -= timeSlice;
-                currentTime += timeSlice;
-                if (p.startTime == -1) {
-                    p.start(currentTime - timeSlice);
-                }
-                if (p.remainingTime == 0) {
-                    p.complete(currentTime);
-                } else {
-                    unfinishedProcesses.add(p);
-                }
-                if (!isEmpty() && queue.peek().arrivalTime <= currentTime) {
-                    queue.add(p);
-                }
-            }
-            // Print any unfinished processes with their remaining time
-            for (Process p : unfinishedProcesses) {
-                System.out.printf("Process %d was not completed. Remaining time: %d\n", p.processID, p.remainingTime);
-            }
-        }
-    }
-
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        Random random = new Random(); 
-        // read input from user
-        System.out.print("Enter number of processes: ");
-        int numProcesses = scanner.nextInt();
-        System.out.print("Enter time quantum: ");
-        int quantum = scanner.nextInt();
-        System.out.print("Enter the time limit: ");
-        int timelimit = scanner.nextInt();
 
-        // Generate processes with random arrival times and CPU burst times
-        List<Process> processes = new ArrayList<>();
-        for (int i = 0; i < numProcesses; i++) {
-            int arrivalTime = random.nextInt(10);
-            int burstTime = random.nextInt(10);
-            processes.add(new Process(i, arrivalTime, burstTime));
+        Scanner sc = new Scanner(System.in);
+
+        System.out.print("Enter Number of Processes: ");
+        int n = sc.nextInt();
+
+        Process[] processes = new Process[n];
+
+        for (int i = 0; i < n; i++) {
+
+            System.out.println("\nProcess P" + (i + 1));
+
+            System.out.print("Arrival Time: ");
+            int at = sc.nextInt();
+
+            System.out.print("Burst Time: ");
+            int bt = sc.nextInt();
+
+            processes[i] = new Process(i + 1, at, bt);
         }
 
-        Scheduler scheduler = new Scheduler(quantum, timelimit);
+        System.out.print("\nEnter Time Quantum: ");
+        int quantum = sc.nextInt();
+
+        Arrays.sort(processes, Comparator.comparingInt(p -> p.arrivalTime));
+
+        Queue<Process> readyQueue = new LinkedList<>();
+        List<String> ganttChart = new ArrayList<>();
+
+        int currentTime = 0;
+        int completed = 0;
+        int index = 0;
+
+        while (completed < n) {
+
+            while (index < n &&
+                    processes[index].arrivalTime <= currentTime) {
+                readyQueue.add(processes[index]);
+                index++;
+            }
+
+            if (readyQueue.isEmpty()) {
+                currentTime++;
+
+                while (index < n &&
+                        processes[index].arrivalTime <= currentTime) {
+                    readyQueue.add(processes[index]);
+                    index++;
+                }
+
+                continue;
+            }
+
+            Process current = readyQueue.poll();
+
+            int executionTime =
+                    Math.min(quantum, current.remainingTime);
+
+            ganttChart.add(
+                    "P" + current.pid +
+                    "(" + currentTime +
+                    "-" + (currentTime + executionTime) + ")"
+            );
+
+            currentTime += executionTime;
+            current.remainingTime -= executionTime;
+
+            while (index < n &&
+                    processes[index].arrivalTime <= currentTime) {
+                readyQueue.add(processes[index]);
+                index++;
+            }
+
+            if (current.remainingTime > 0) {
+                readyQueue.add(current);
+            } else {
+                completed++;
+
+                current.completionTime = currentTime;
+
+                current.turnaroundTime =
+                        current.completionTime -
+                        current.arrivalTime;
+
+                current.waitingTime =
+                        current.turnaroundTime -
+                        current.burstTime;
+            }
+        }
+
+        System.out.println("\n========== GANTT CHART ==========");
+
+        for (String s : ganttChart) {
+            System.out.print("| " + s + " ");
+        }
+        System.out.println("|");
+
+        System.out.println("\n================ PROCESS TABLE ================");
+
+        System.out.printf("%-8s%-8s%-8s%-8s%-8s%-8s%n",
+                "PID", "AT", "BT", "CT", "TAT", "WT");
+
+        double totalWT = 0;
+        double totalTAT = 0;
+
+        Arrays.sort(processes, Comparator.comparingInt(p -> p.pid));
+
         for (Process p : processes) {
-            scheduler.addProcess(p);
-        }
-        scheduler.roundRobin();
 
-        // Print results
-        double totalWaitingTime = 0.0;
-        double totalTurnaroundTime = 0.0;
-        for (Process p : processes) {
-            System.out.printf("Process %d: arrivalTime=%d, burstTime=%d, waitingTime=%d, turnaroundTime=%d\n",
-        p.processID, p.arrivalTime, p.burstTime, p.waitingTime, p.turnaroundTime);
-        totalWaitingTime += p.waitingTime;
-        totalTurnaroundTime += p.turnaroundTime;
+            System.out.printf("%-8d%-8d%-8d%-8d%-8d%-8d%n",
+                    p.pid,
+                    p.arrivalTime,
+                    p.burstTime,
+                    p.completionTime,
+                    p.turnaroundTime,
+                    p.waitingTime);
+
+            totalWT += p.waitingTime;
+            totalTAT += p.turnaroundTime;
         }
-        double avgWaitingTime = totalWaitingTime / numProcesses;
-        double avgTurnaroundTime = totalTurnaroundTime / numProcesses;
-        System.out.printf("Average waiting time: %.2f\n", avgWaitingTime);
-        System.out.printf("Average turnaround time: %.2f\n", avgTurnaroundTime);
+
+        System.out.println("\n==============================================");
+
+        System.out.printf("Average Waiting Time = %.2f%n",
+                totalWT / n);
+
+        System.out.printf("Average Turnaround Time = %.2f%n",
+                totalTAT / n);
+
+        sc.close();
     }
 }
